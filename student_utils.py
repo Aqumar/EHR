@@ -13,13 +13,18 @@ def reduce_dimension_ndc(df, ndc_df):
     return:
         df: pandas dataframe, output dataframe with joined generic drug name
     '''
-    df_new = pd.merge(df, ndc_code_df[['NDC_Code', 'Non-proprietary Name']],
-                      how="left",
-                      left_on='ndc_code',
-                      right_on='NDC_Code')
-    df_new.rename(columns={"Non-proprietary Name": "generic_drug_name"}, inplace=True)
+    ndc_code_df = ndc_df
+    grouped_df = pd.DataFrame(ndc_code_df.groupby('Non-proprietary Name')['NDC_Code'].apply(list)).reset_index()
+
+    ndc_code_grouped_dict = dict(zip(grouped_df['Non-proprietary Name'], grouped_df['NDC_Code']))
+
+    df['generic_drug_name'] = ''
+
+    for name, code in ndc_code_grouped_dict.items():
+    	df.loc[df['ndc_code'].isin(code), 'generic_drug_name'] = name
     
-    return df_new
+    reduce_dim_df = df
+    return reduce_dim_df
 
 #Question 4
 # The code is to select the first encounter data point for every patient from the set of unique patients. 
@@ -55,6 +60,7 @@ def patient_dataset_splitter(df, patient_key='patient_nbr'):
      - validation: pandas dataframe,
      - test: pandas dataframe,
     '''
+    processed_df = df
     train_percentage = 0.6
     valid_percentage = 0.2
     test_percentage = 0.2
@@ -144,5 +150,5 @@ def get_student_binary_prediction(df, col):
     return:
         student_binary_prediction: pandas dataframe converting input to flattened numpy array and binary labels
     '''
-    student_binary_prediction = prob_output_df['pred_mean'].apply(lambda x: 1 if x>=5 else 0).to_numpy()
+    student_binary_prediction = df[col].apply(lambda x: 1 if x>=5 else 0).to_numpy()
     return student_binary_prediction
